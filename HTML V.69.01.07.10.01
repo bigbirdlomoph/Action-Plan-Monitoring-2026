@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <base target="_top">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600;700&family=Inter:wght@400;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+    <script src="https://code.highcharts.com/highcharts.js"></script>
+    <style>
+      :root { 
+        --primary-color: #006600; --bg-body: #f4f7f9; --allocated-blue: #1565c0; 
+        --text-dark: #2d3436; --remaining-orange: #e67e22;
+        --q1-color: #004d40; --q2-color: #006600; --q3-color: #2e7d32; --q4-color: #558b2f; 
+      }
+      body, .form-select, .form-control, .btn, .table { font-family: 'Prompt', sans-serif; background-color: var(--bg-body); color: var(--text-dark); line-height: 1.5; }
+      .navbar { background-color: var(--primary-color); border-bottom: 4px solid #fbc02d; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+      .nav-link-custom { color: rgba(255,255,255,0.9); font-weight: 500; padding: 0.5rem 1rem; border-radius: 10px; text-decoration: none; cursor: pointer; transition: 0.3s; font-size: 0.9rem; }
+      .nav-active { background: white !important; color: var(--primary-color) !important; font-weight: 600; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
+      .table-responsive { background: white; border-radius: 20px; overflow: hidden; box-shadow: 0 5px 25px rgba(0,0,0,0.06); }
+      .table thead th { background-color: var(--primary-color) !important; color: white !important; font-weight: 600; text-align: center; padding: 15px 10px; border: none; position: sticky; top: 0; z-index: 10; }
+      .table tbody td { padding: 14px 10px; vertical-align: top; border-bottom: 1px solid #f1f4f6; font-size: 0.88rem; }
+      .summary-row { background-color: #f0fdf4 !important; color: #1a5d1a !important; font-weight: 700; border-top: 1px solid #c8e6c9; border-bottom: 1px solid #c8e6c9; }
+      .grand-total-row td { background-color: #1a3c1a !important; color: #fbc02d !important; font-weight: 800; font-size: 1.1rem; padding: 18px !important; border: none; }
+      .table-timeline thead th { font-size: 1.1rem !important; padding: 15px 8px; border: 1px solid rgba(255,255,255,0.15) !important; }
+      .bg-q1 { background-color: var(--q1-color) !important; } .bg-q2 { background-color: var(--q2-color) !important; } .bg-q3 { background-color: var(--q3-color) !important; } .bg-q4 { background-color: var(--q4-color) !important; }
+      .row-project-header { background-color: #f1f8f1 !important; color: #004d00 !important; font-weight: 700; border-top: 2px solid #c8e6c9 !important; font-size: 1rem; }
+      .tag-month { display: inline-block; background: #e8f5e9; color: #1b5e20; border: 1px solid #c8e6c9; border-radius: 6px; padding: 2px 6px; font-size: 0.72rem; margin: 1px; font-weight: 600; }
+      .month-cell { width: 40px; text-align: center; border-right: 1px solid #f1f1f1 !important; vertical-align: middle !important; }
+      .current-month-bg { background-color: #e3f2fd; }
+      .check-mark { color: #00b894; font-size: 1.2rem; }
+      .stat-card { background: white; border-radius: 20px; padding: 1.5rem; border: none; box-shadow: 0 5px 15px rgba(0,0,0,0.03); margin-bottom: 1rem; }
+      .val-display { font-family: 'Inter', sans-serif; font-size: clamp(1.8rem, 5vw, 2.8rem); font-weight: 800; }
+      .col-num { font-family: 'Inter', sans-serif; text-align: right; font-weight: 700; white-space: nowrap; }
+      .text-blue { color: var(--allocated-blue) !important; } .text-green { color: #2e7d32 !important; } .text-orange-custom { color: #fd7e14 !important; } .text-red { color: #dc3545 !important; }
+      #backToTop { position: fixed; bottom: 20px; right: 20px; z-index: 99; display: none; background-color: var(--primary-color); color: white; width: 45px; height: 45px; border-radius: 50%; border: none; cursor: pointer; }
+    </style>
+  </head>
+  <body>
+    <button id="backToTop" onclick="scrollToTop()"><i class="bi bi-arrow-up"></i></button>
+    <nav class="navbar navbar-dark sticky-top">
+      <div class="container-fluid d-flex justify-content-between align-items-center py-2 px-md-4">
+        <span class="navbar-brand fw-bold">AP 2569 MONITORING</span>
+        <div class="d-flex gap-1 gap-md-2">
+          <a id="nav-dash" class="nav-link-custom" onclick="switchView('dashboard')">แผงควบคุม</a>
+          <a id="nav-search" class="nav-link-custom" onclick="switchView('search')">สืบค้นแผน</a>
+          <a id="nav-timeline" class="nav-link-custom" onclick="switchView('timeline')">แผนงานประจำปี</a>
+        </div>
+      </div>
+    </nav>
+
+    <div class="container-fluid px-2 px-md-5 py-3">
+      <div id="view-dashboard" style="display:none;"><div class="row g-3 mb-2" id="dashboard-summary"></div><div id="dashboard-content"></div></div>
+      <div id="view-search" style="display:none;"><div id="search-filter-area"></div></div>
+      <div id="view-timeline" style="display:none;">
+        <div class="stat-card border-top border-5 border-success mb-4 shadow-sm">
+          <div class="row align-items-center g-3">
+            <div class="col-md-6">
+              <h4 class="fw-bold mb-3"><i class="bi bi-calendar3 me-2"></i> แผนงานประจำปี 2569</h4>
+              <div class="d-flex align-items-center gap-2">
+                <label class="small fw-bold text-muted text-nowrap mb-0">กลุ่มงาน:</label>
+                <select id="t-group" class="form-select form-select-sm" style="max-width: 300px;" onchange="loadTimeline()"></select>
+                <button class="btn btn-outline-secondary btn-sm text-nowrap" onclick="resetTimeline()"><i class="bi bi-arrow-counterclockwise"></i> ล้างค่า</button>
+              </div>
+            </div>
+            <div class="col-md-6 d-flex justify-content-md-end gap-2" id="timeline-stats-area">
+              <div class="text-center p-2 bg-light rounded border shadow-sm" style="min-width:110px;"><div class="small text-muted fw-bold">โครงการ</div><div class="val-display h4 mb-0 text-primary" id="t-stat-proj">0</div></div>
+              <div class="text-center p-2 bg-light rounded border shadow-sm" style="min-width:110px;"><div class="small text-muted fw-bold">กิจกรรม</div><div class="val-display h4 mb-0 text-dark" id="t-stat-act">0</div></div>
+              <div class="text-center p-2 bg-light rounded border shadow-sm" style="min-width:150px;"><div class="small text-muted fw-bold">งบรวม</div><div class="val-display h4 mb-0 text-success" id="t-stat-budget">0</div></div>
+            </div>
+          </div>
+        </div>
+        <div class="table-responsive bg-white rounded shadow-sm">
+          <table class="table table-timeline mb-0">
+            <thead>
+              <tr><th rowspan="3" class="main-header" style="width:50px;">#</th><th rowspan="3" class="main-header">รายการ / กิจกรรม</th><th rowspan="3" class="main-header" style="width:110px;">ประเภทงบ</th><th colspan="12" class="main-header">ระยะเวลาดำเนินงาน (ปีงบประมาณ 2569)</th><th rowspan="3" class="main-header" style="width:120px;">อนุมัติ</th><th rowspan="3" class="main-header" style="width:120px;">จัดสรร</th><th rowspan="3" class="main-header" style="width:120px;">เบิกจ่าย</th><th rowspan="3" class="main-header" style="width:120px;">คงเหลือ</th><th rowspan="3" class="main-header" style="width:110px;">ร้อยละเบิกจ่าย</th></tr>
+              <tr><th colspan="3" class="bg-q1">ไตรมาส 1</th><th colspan="3" class="bg-q2">ไตรมาส 2</th><th colspan="3" class="bg-q3">ไตรมาส 3</th><th colspan="3" class="bg-q4">ไตรมาส 4</th></tr>
+              <tr><th class="month-cell bg-q1">ต.ค.</th><th class="month-cell bg-q1">พ.ย.</th><th class="month-cell bg-q1">ธ.ค.</th><th class="month-cell bg-q2">ม.ค.</th><th class="month-cell bg-q2">ก.พ.</th><th class="month-cell bg-q2">มี.ค.</th><th class="month-cell bg-q3">เม.ย.</th><th class="month-cell bg-q3">พ.ค.</th><th class="month-cell bg-q3">มิ.ย.</th><th class="month-cell bg-q4">ก.ค.</th><th class="month-cell bg-q4">ส.ค.</th><th class="month-cell bg-q4">ก.ย.</th></tr>
+            </thead>
+            <tbody id="timeline-body"><tr><td colspan="20" class="text-center py-5 text-muted">กรุณาเลือกกลุ่มงานเพื่อแสดงแผนงาน</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      const fmt = new Intl.NumberFormat('th-TH', { minimumFractionDigits: 2 });
+      let allData = [], currentPage = 1, pageSize = 10;
+      const ms = ["ต.ค.","พ.ย.","ธ.ค.","ม.ค.","ก.พ.","มี.ค.","เม.ย.","พ.ค.","มิ.ย.","ก.ค.","ส.ค.","ก.ย."];
+      const cleanNum = (v) => { if (!v) return 0; let n = parseFloat(v.toString().replace(/,/g, '')); return isNaN(n) ? 0 : n; };
+      const curMIndex = () => { const m = new Date().getMonth(); const map = {9:0, 10:1, 11:2, 0:3, 1:4, 2:5, 3:6, 4:7, 5:8, 6:9, 7:10, 8:11}; return map[m]; };
+      function getPercColor(val) { if(val <= 30.99) return "text-red"; if(val <= 60.99) return "text-orange-custom"; if(val >= 91.00) return "text-green"; return "text-blue"; }
+
+      window.onload = () => {
+        renderDashboardStructure(); renderSearchStructure();
+        switchView('dashboard'); 
+        google.script.run.withSuccessHandler(d => {
+          const gs = document.getElementById('f-group'), ts = document.getElementById('t-group'), bs = document.getElementById('f-budget'), fs = document.getElementById('f-start'), fe = document.getElementById('f-end');
+          if(gs) { gs.add(new Option('-- ทั้งหมด --', '')); d.groups.forEach(g => gs.add(new Option(g, g))); }
+          if(ts) { ts.add(new Option('-- เลือกกลุ่มงาน --', '')); d.groups.forEach(g => ts.add(new Option(g, g))); }
+          if(bs) { bs.add(new Option('-- ทั้งหมด --', '')); d.budgets.forEach(b => bs.add(new Option(b, b))); }
+          if(fs && fe) { fs.add(new Option('--กรุณาเลือก--', '')); fe.add(new Option('--กรุณาเลือก--', '')); ms.forEach(m => { fs.add(new Option(m,m)); fe.add(new Option(m,m)); }); }
+        }).getFilterData();
+      };
+
+      function switchView(v) {
+        ['view-dashboard', 'view-search', 'view-timeline'].forEach(id => document.getElementById(id).style.display = 'none');
+        ['nav-dash', 'nav-search', 'nav-timeline'].forEach(id => document.getElementById(id).classList.remove('nav-active'));
+        document.getElementById('view-' + v).style.display = 'block';
+        document.getElementById('nav-' + (v==='dashboard'?'dash':v)).classList.add('nav-active');
+        if(v === 'dashboard') loadDashboard();
+        setTimeout(() => { Highcharts.charts.forEach(c => c && c.reflow()); }, 200);
+      }
+
+      function loadDashboard() {
+        google.script.run.withSuccessHandler(s => {
+          document.getElementById('st-cat').innerText = s.totalCategories; document.getElementById('st-proj').innerText = s.totalProjects;
+          document.getElementById('st-sp-appr').innerText = fmt.format(s.spAppr); document.getElementById('st-sp-alloc').innerText = fmt.format(s.spAlloc); document.getElementById('st-sp-disb').innerText = fmt.format(s.spDisb);
+          document.getElementById('st-out-appr').innerText = fmt.format(s.outAppr); document.getElementById('st-out-alloc').innerText = fmt.format(s.outAlloc); document.getElementById('st-out-disb').innerText = fmt.format(s.outDisb);
+          renderDoughnut('doughnutSp', s.spPerc); renderDoughnut('doughnutOutside', s.outPerc);
+          renderBarChart('chartSp', s.topSpGroups, '#198754'); renderBarChart('chartOutside', s.topOutsideGroups, '#1565c0');
+        }).getDashboardData();
+      }
+
+      function renderDoughnut(id, val) { Highcharts.chart(id, { chart: { type: 'pie', height: 320, backgroundColor: 'transparent' }, title: { text: val.toFixed(2) + '%', align: 'center', verticalAlign: 'middle', style: { fontSize: '30px', fontWeight: '800', color: (val<=25?'#ef5350':val<=50?'#ff9800':val<=75?'#fbc02d':'#43a047'), fontFamily: 'Inter' } }, tooltip: { pointFormat: 'เบิกจ่าย: <b>{point.y:.2f}%</b>' }, plotOptions: { pie: { innerSize: '70%', dataLabels: { enabled: false }, borderWidth: 0 } }, series: [{ data: [{ y: val, color: (val<=25?'#ef5350':val<=50?'#ff9800':val<=75?'#fbc02d':'#43a047') }, { y: Math.max(0, 100-val), color: '#eceff1' }] }], credits: { enabled: false } }); }
+      function renderBarChart(id, data, color) { Highcharts.chart(id, { chart: { type: 'column', backgroundColor: 'transparent' }, title: { text: null }, xAxis: { categories: data.map(d => d.name), labels: { style: { fontSize: '10px' } } }, yAxis: { max: 100, title: { text: null } }, legend: { enabled: false }, plotOptions: { column: { colorByPoint: true, colors: [color], dataLabels: { enabled: true, format: '{point.y:.1f}%', style: { fontSize: '10px' } }, borderRadius: 6 } }, series: [{ data: data.map(d => d.y) }], credits: { enabled: false } }); }
+      function performSearch() { const filters = { workGroup: document.getElementById('f-group').value, budgetSrc: document.getElementById('f-budget').value, projectName: document.getElementById('f-name').value, startMonth: document.getElementById('f-start').value === '--กรุณาเลือก--' ? '' : document.getElementById('f-start').value, endMonth: document.getElementById('f-end').value === '--กรุณาเลือก--' ? '' : document.getElementById('f-end').value }; google.script.run.withSuccessHandler(res => { allData = res; currentPage = 1; renderTable(); }).searchActionPlan(filters); }
+
+      function renderTable() {
+        const tbody = document.getElementById('result-body'); const start = (currentPage - 1) * pageSize; const pageData = allData.slice(start, start + pageSize);
+        if(!pageData.length) { tbody.innerHTML = '<tr><td colspan="12" class="text-center py-5 text-muted">-- ไม่พบข้อมูล --</td></tr>'; return; }
+        let html = "", lastGroup = "", lastProj = "", sL = 0, sM = 0, sN = 0;
+        pageData.forEach((row, i) => {
+          if (row[5] !== lastProj && i !== 0) { 
+            const sPerc = sM > 0 ? (sN / sM) * 100 : 0; const sColor = getPercColor(sPerc);
+            html += `<tr class="summary-row"><td colspan="7" class="text-end">รวมโครงการ: ${lastProj}</td><td class="col-num">${fmt.format(sL)}</td><td class="col-num text-blue">${fmt.format(sM)}</td><td class="col-num text-green">${fmt.format(sN)}</td><td class="col-num text-blue">${fmt.format(sM-sN)}</td><td class="col-num ${sColor}">${sPerc.toFixed(2)}%</td></tr>`; sL = 0; sM = 0; sN = 0; 
+          }
+          const dG = (row[3] === lastGroup) ? "" : row[3], dP = (row[5] === lastProj) ? "" : row[5], dO = (row[5] === lastProj) ? "" : row[2], l = cleanNum(row[11]), m = cleanNum(row[12]), n = cleanNum(row[13]), p = cleanNum(row[14]), pColor = getPercColor(p);
+          let tags = ""; ms.forEach((name, k) => { if(row[15+k] && row[15+k].toString().trim() !== "") tags += `<span class="tag-month">${name}</span>`; });
+          html += `<tr><td class="text-center">${dO}</td><td class="fw-bold">${dG}</td><td class="project-title text-success fw-bold">${dP}</td><td>${row[6]}<br><small class="text-muted">${row[7]}</small></td><td class="text-center">${tags}</td><td>${row[9]}</td><td>${row[10]}</td><td class="col-num">${fmt.format(l)}</td><td class="col-num text-blue">${fmt.format(m)}</td><td class="col-num text-green">${fmt.format(n)}</td><td class="col-num text-blue">${fmt.format(rem)}</td><td class="col-num ${pColor}">${p.toFixed(2)}%</td></tr>`;
+          sL+=l; sM+=m; sN+=n; lastGroup = row[3]; lastProj = row[5]; 
+          if(i === pageData.length - 1) { const sPercFinal = sM > 0 ? (sN / sM) * 100 : 0; const sColorFinal = getPercColor(sPercFinal); html += `<tr class="summary-row"><td colspan="7" class="text-end">รวมโครงการ: ${lastProj}</td><td class="col-num">${fmt.format(sL)}</td><td class="col-num text-blue">${fmt.format(sM)}</td><td class="col-num text-green">${fmt.format(sN)}</td><td class="col-num text-blue">${fmt.format(sM-sN)}</td><td class="col-num ${sColorFinal}">${sPercFinal.toFixed(2)}%</td></tr>`; }
+        });
+        let gL = 0, gM = 0, gN = 0; allData.forEach(r => { gL += cleanNum(r[11]); gM += cleanNum(r[12]); gN += cleanNum(r[13]); });
+        const gPerc = gM > 0 ? (gN / gM) * 100 : 0;
+        html += `<tr class="grand-total-row"><td colspan="7" class="text-end fw-bold">ยอดรวมงบประมาณทั้งสิ้น (Grand Total)</td><td class="col-num">${fmt.format(gL)}</td><td class="col-num">${fmt.format(gM)}</td><td class="col-num">${fmt.format(gN)}</td><td class="col-num text-light">${fmt.format(gM - gN)}</td><td class="col-num">${gPerc.toFixed(2)}%</td></tr>`;
+        tbody.innerHTML = html; updatePager();
+      }
+
+      function loadTimeline() {
+        const group = document.getElementById('t-group').value; if(!group || group === '-- เลือกกลุ่มงาน --') return;
+        google.script.run.withSuccessHandler(res => {
+          const tbody = document.getElementById('timeline-body'); tbody.innerHTML = "";
+          let totL = 0, totM = 0, totN = 0, curM = curMIndex();
+          const grouped = res.reduce((acc, row) => { const p = row[5]; if(!acc[p]) acc[p] = { rows: [], sumL: 0, sumM: 0, sumN: 0 }; acc[p].rows.push(row); acc[p].sumL += cleanNum(row[11]); acc[p].sumM += cleanNum(row[12]); acc[p].sumN += cleanNum(row[13]); return acc; }, {});
+
+          let projIdx = 0;
+          for(const pName in grouped) {
+            projIdx++; const pData = grouped[pName]; totL += pData.sumL; totM += pData.sumM; totN += pData.sumN;
+            tbody.innerHTML += `<tr class="row-project-header"><td class="text-center">${projIdx}</td><td colspan="19">โครงการ: ${pName}</td></tr>`;
+            pData.rows.forEach((row, i) => {
+              let mHtml = ""; for(let k=0; k<12; k++) { const hasAct = row[15+k] && row[15+k].toString().trim() !== ""; mHtml += `<td class="month-cell ${k === curM ? 'current-month-bg':''}">${hasAct ? '<i class="bi bi-check-circle-fill check-mark"></i>' : ''}</td>`; }
+              const l = cleanNum(row[11]), m = cleanNum(row[12]), n = cleanNum(row[13]), rem = m - n, p = cleanNum(row[14]), pC = getPercColor(p);
+              tbody.innerHTML += `<tr><td class="text-center text-muted small">${projIdx}.${i+1}</td><td class="ps-4">${row[6]}<br><small class="text-muted">${row[7]}</small></td><td class="text-center small">${row[9]}</td>${mHtml}<td class="col-num text-dark">${fmt.format(l)}</td><td class="col-num text-blue">${fmt.format(m)}</td><td class="col-num text-green">${fmt.format(n)}</td><td class="col-num text-blue">${fmt.format(rem)}</td><td class="col-num ${pC}">${p.toFixed(2)}%</td></tr>`;
+            });
+            const pPerc = pData.sumM > 0 ? (pData.sumN / pData.sumM) * 100 : 0, pPC = getPercColor(pPerc);
+            tbody.innerHTML += `<tr class="summary-row"><td colspan="15" class="text-end">รวมโครงการ: ${pName}</td><td class="col-num text-dark">${fmt.format(pData.sumL)}</td><td class="col-num text-blue">${fmt.format(pData.sumM)}</td><td class="col-num text-green">${fmt.format(pData.sumN)}</td><td class="col-num text-blue">${fmt.format(pData.sumM - pData.sumN)}</td><td class="col-num ${pPC}">${pPerc.toFixed(2)}%</td></tr>`;
+          }
+          const gPerc = totM > 0 ? (totN / totM) * 100 : 0;
+          tbody.innerHTML += `<tr class="grand-total-row"><td colspan="15" class="text-end fw-bold">ยอดรวมงบประมาณกลุ่มงานทั้งสิ้น</td><td class="col-num text-light">${fmt.format(totL)}</td><td class="col-num text-light">${fmt.format(totM)}</td><td class="col-num text-light">${fmt.format(totN)}</td><td class="col-num text-light">${fmt.format(totM - totN)}</td><td class="col-num text-light">${gPerc.toFixed(2)}%</td></tr>`;
+          document.getElementById('t-stat-proj').innerText = Object.keys(grouped).length; document.getElementById('t-stat-act').innerText = res.length; document.getElementById('t-stat-budget').innerText = fmt.format(totL);
+        }).searchActionPlan({ workGroup: group });
+      }
+
+      function resetTimeline() { document.getElementById('t-group').selectedIndex = 0; document.getElementById('timeline-body').innerHTML = '<tr><td colspan="20" class="text-center py-5 text-muted">กรุณาเลือกกลุ่มงานเพื่อแสดงแผนงาน</td></tr>'; ['t-stat-proj','t-stat-act','t-stat-budget'].forEach(id => document.getElementById(id).innerText = '0'); }
+      function updatePager() { const totalP = Math.ceil(allData.length / pageSize) || 1; const st = document.getElementById('p-select-top'), sb = document.getElementById('p-select-bottom'); st.innerHTML = ''; sb.innerHTML = ''; for(let i=1; i<=totalP; i++) { st.add(new Option(i,i)); sb.add(new Option(i,i)); } st.value = currentPage; sb.value = currentPage; document.getElementById('txt-count-top').innerText = `พบ ${allData.length} รายการ`; document.getElementById('txt-count-bottom').innerText = `หน้า ${currentPage}/${totalP}`; }
+      function jumpSync(s) { currentPage = parseInt(document.getElementById(s === 'top' ? 'p-select-top' : 'p-select-bottom').value); if(s === 'bottom') window.scrollTo({top: document.getElementById('view-search').offsetTop, behavior: 'smooth'}); renderTable(); }
+      function resetSearch() { document.querySelectorAll('#view-search select').forEach(e=>e.selectedIndex=0); document.getElementById('f-name').value=""; allData=[]; renderTable(); }
+      function renderDashboardStructure() { document.getElementById('dashboard-summary').innerHTML = `<div class="col-6"><div class="stat-card d-flex justify-content-between align-items-center"><div><div class="metric-label small fw-bold text-muted">หมวดหมู่ (B)</div><div class="val-display text-success" id="st-cat">0</div></div><i class="bi bi-grid-3x3-gap fs-3 opacity-25"></i></div></div><div class="col-6"><div class="stat-card d-flex justify-content-between align-items-center"><div><div class="metric-label small fw-bold text-muted">โครงการ (F)</div><div class="val-display text-primary" id="st-proj">0</div></div><i class="bi bi-journal-text fs-3 opacity-25"></i></div></div>`; document.getElementById('dashboard-content').innerHTML = `<div class="section-label">งบประมาณใน สป.สธ.</div><div class="stat-card"><div class="row align-items-center g-0"><div class="col-md-8 border-end text-center"><div class="row g-0"><div class="col-4 border-end metric-col"><div class="metric-label small fw-bold text-muted">อนุมัติ (L)</div><div class="val-display text-dark-custom" id="st-sp-appr">0</div></div><div class="col-4 border-end metric-col"><div class="metric-label small fw-bold text-muted">จัดสรร (M)</div><div class="val-display text-blue" id="st-sp-alloc">0</div></div><div class="col-4 metric-col"><div class="metric-label small fw-bold text-muted">เบิกจ่ายจริง (N)</div><div class="val-display text-green" id="st-sp-disb">0</div></div></div></div><div class="col-md-4"><div id="doughnutSp" class="doughnut-container"></div></div></div></div><div class="stat-card shadow-sm"><div id="chartSp" style="height:350px;"></div></div><div class="section-label">งบประมาณเงินนอก สป.</div><div class="stat-card"><div class="row align-items-center g-0"><div class="col-md-8 border-end text-center"><div class="row g-0"><div class="col-4 border-end metric-col"><div class="metric-label small fw-bold text-muted">อนุมัติ (L)</div><div class="val-display text-dark-custom" id="st-out-appr">0</div></div><div class="col-4 border-end metric-col"><div class="metric-label small fw-bold text-muted">จัดสรร (M)</div><div class="val-display text-blue" id="st-out-alloc">0</div></div><div class="col-4 metric-col"><div class="metric-label small fw-bold text-muted">เบิกจ่ายจริง (N)</div><div class="val-display text-green" id="st-out-disb">0</div></div></div></div><div class="col-md-4"><div id="doughnutOutside" class="doughnut-container"></div></div></div></div><div class="stat-card shadow-sm"><div id="chartOutside" style="height:350px;"></div></div>`; }
+      function renderSearchStructure() { document.getElementById('search-filter-area').innerHTML = `<div class="stat-card border-top border-5 border-success p-4 shadow-sm"><div class="row g-2 g-md-3"><div class="col-12 col-md-3"><label class="fw-bold small mb-1">กลุ่มงาน</label><select id="f-group" class="form-select form-select-sm"></select></div><div class="col-12 col-md-3"><label class="fw-bold small mb-1">แหล่งงบ</label><select id="f-budget" class="form-select form-select-sm"></select></div><div class="col-6 col-md-3"><label class="fw-bold small mb-1">เริ่มต้น</label><select id="f-start" class="form-select form-select-sm"></select></div><div class="col-6 col-md-3"><label class="fw-bold small mb-1">สิ้นสุด</label><select id="f-end" class="form-select form-select-sm"></select></div><div class="col-12 col-md-9"><label class="fw-bold small mb-1">ชื่อโครงการ</label><input type="text" id="f-name" class="form-control form-select-sm" placeholder="พิมพ์ชื่อโครงการที่ต้องการสืบค้น..."></div><div class="col-12 col-md-3 d-flex align-items-end gap-2"><button onclick="performSearch()" class="btn btn-success btn-sm fw-bold flex-grow-1">สืบค้นแผน</button><button onclick="resetSearch()" class="btn btn-outline-secondary btn-sm">ล้าง</button><button onclick="window.print()" class="btn btn-dark btn-sm"><i class="bi bi-printer"></i></button></div></div></div><div class="bg-white p-2 border rounded-top d-flex justify-content-between align-items-center shadow-sm mt-3"><div class="fw-bold text-success small" id="txt-count-top">พบ 0 รายการ</div><div class="d-flex align-items-center gap-1 small">หน้า <select id="p-select-top" onchange="jumpSync('top')" class="form-select form-select-sm w-auto shadow-sm"></select></div></div><div class="table-responsive border-start border-end"><table class="table table-hover mb-0"><thead><tr><th>ลำดับ</th><th>กลุ่มงาน</th><th>โครงการ</th><th>กิจกรรม</th><th>ระยะเวลา</th><th>ประเภทงบ</th><th>แหล่งงบ</th><th>อนุมัติ</th><th>จัดสรร</th><th>เบิกจ่าย</th><th>คงเหลือ</th><th>ร้อยละเบิกจ่าย</th></tr></thead><tbody id="result-body"></tbody></table></div><div class="bg-white p-2 border rounded-bottom d-flex justify-content-between align-items-center mb-5 shadow-sm"><div class="text-muted extra-small" id="txt-count-bottom"></div><div class="d-flex align-items-center gap-1 small">หน้า <select id="p-select-bottom" onchange="jumpSync('bottom')" class="form-select form-select-sm w-auto shadow-sm"></select></div></div>`; }
+      function scrollToTop() { window.scrollTo({top: 0, behavior: 'smooth'}); }
+      window.onscroll = () => { document.getElementById("backToTop").style.display = (window.scrollY > 300) ? "block" : "none"; };
+    </script>
+  </body>
+</html>
