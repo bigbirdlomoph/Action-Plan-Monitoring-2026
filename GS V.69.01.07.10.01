@@ -1,0 +1,84 @@
+const SS_ID = '1RV4UkzfZoTVlZeuIBt_aUDFEQhsoLvSn_ZpbTFvHjKU'; 
+const SHEET_NAME = 'Action Plan 2569'; 
+
+function doGet() {
+  return HtmlService.createTemplateFromFile('Index')
+      .evaluate()
+      .setTitle('AP 2569 Monitoring V.69.01.07.10.01') // ระบุเลข Version ไว้ใน Title Bar ที่นี่
+      .addMetaTag('viewport', 'width=device-width, initial-scale=1')
+      .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
+}
+
+function getDashboardData() {
+  try {
+    const ss = SpreadsheetApp.openById(SS_ID);
+    const sheet = ss.getSheetByName(SHEET_NAME);
+    const data = sheet.getDataRange().getValues();
+    const rows = data.slice(1);
+    let stats = { totalCategories: 0, totalProjects: 0, spAppr: 0, spAlloc: 0, spDisb: 0, spPerc: 0, outAppr: 0, outAlloc: 0, outDisb: 0, outPerc: 0, topSpGroups: [], topOutsideGroups: [] };
+    const categories = new Set(), projects = new Set(), spGroupData = {}, outGroupData = {};
+    const cleanNum = (v) => { if (!v) return 0; let n = parseFloat(v.toString().replace(/,/g, '')); return isNaN(n) ? 0 : n; };
+
+    rows.forEach(row => {
+      const type = row[9] ? row[9].toString() : "";
+      const group = row[3] ? row[3].toString().trim() : "ไม่ระบุกลุ่มงาน";
+      const l = cleanNum(row[11]), m = cleanNum(row[12]), n = cleanNum(row[13]);
+      if(row[1]) categories.add(row[1].toString().trim());
+      if(row[5]) projects.add(row[5].toString().trim());
+      if (type.includes("สป.สธ.")) {
+        stats.spAppr += l; stats.spAlloc += m; stats.spDisb += n;
+        if (!spGroupData[group]) spGroupData[group] = { alloc: 0, disb: 0 };
+        spGroupData[group].alloc += m; spGroupData[group].disb += n;
+      } else if (type.includes("เงินนอก")) {
+        stats.outAppr += l; stats.outAlloc += m; stats.outDisb += n;
+        if (!outGroupData[group]) outGroupData[group] = { alloc: 0, disb: 0 };
+        outGroupData[group].alloc += m; outGroupData[group].disb += n;
+      }
+    });
+    stats.totalCategories = categories.size; stats.totalProjects = projects.size;
+    stats.spPerc = stats.spAlloc > 0 ? (stats.spDisb / stats.spAlloc) * 100 : 0;
+    stats.outPerc = stats.outAlloc > 0 ? (stats.outDisb / stats.outAlloc) * 100 : 0;
+    const getTop10 = (sourceObj) => {
+      return Object.keys(sourceObj).map(name => ({ name: name, y: sourceObj[name].alloc > 0 ? (sourceObj[name].disb / sourceObj[name].alloc) * 100 : 0 }))
+        .filter(item => item.y > 0).sort((a, b) => b.y - a.y).slice(0, 10);
+    };
+    stats.topSpGroups = getTop10(spGroupData); stats.topOutsideGroups = getTop10(outGroupData);
+    return stats;
+  } catch (e) { return { error: e.toString() }; }
+}
+
+function getFilterData() {
+  const ss = SpreadsheetApp.openById(SS_ID);
+  const sheet = ss.getSheetByName(SHEET_NAME);
+  const rows = sheet.getDataRange().getValues().slice(1);
+  return {
+    groups: [...new Set(rows.map(row => row[3]))].filter(String).sort(),
+    budgets: [...new Set(rows.map(row => row[10]))].filter(String).sort()
+  };
+}
+
+function searchActionPlan(filters) {
+  const ss = SpreadsheetApp.openById(SS_ID);
+  const sheet = ss.getSheetByName(SS_ID); // Fixed reference logic from previous steps
+  const sheetObj = ss.getSheetByName(SHEET_NAME);
+  const data = sheetObj.getDataRange().getValues();
+  const rows = data.slice(1);
+  const monthOrder = ["ต.ค.", "พ.ย.", "ธ.ค.", "ม.ค.", "ก.พ.", "มี.ค.", "เม.ย.", "พ.ค.", "มิ.ย.", "ก.ค.", "ส.ค.", "ก.ย."];
+  const monthMap = { "ต.ค.": 15, "พ.ย.": 16, "ธ.ค.": 17, "ม.ค.": 18, "ก.พ.": 19, "มี.ค.": 20, "เม.ย.": 21, "พ.ค.": 22, "มิ.ย.": 23, "ก.ค.": 24, "ส.ค.": 25, "ก.ย.": 26 };
+
+  return rows.filter(row => {
+    const mG = !filters.workGroup || row[3] === filters.workGroup;
+    const mP = !filters.projectName || row[5].toString().toLowerCase().includes(filters.projectName.toLowerCase());
+    const mB = !filters.budgetSrc || row[10] === filters.budgetSrc;
+    let mM = true;
+    const sIdx = filters.startMonth ? monthOrder.indexOf(filters.startMonth) : -1;
+    const eIdx = filters.endMonth ? monthOrder.indexOf(filters.endMonth) : -1;
+    if (sIdx !== -1 || eIdx !== -1) {
+      let s = (sIdx !== -1) ? sIdx : 0;
+      let e = (eIdx !== -1) ? eIdx : 11;
+      if (s > e) [s, e] = [e, s];
+      mM = monthOrder.slice(s, e + 1).some(m => row[monthMap[m]] && row[monthMap[m]].toString().trim() !== "");
+    }
+    return mG && mP && mB && mM;
+  });
+}
