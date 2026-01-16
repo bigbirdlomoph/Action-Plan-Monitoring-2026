@@ -1,0 +1,340 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <base target="_top">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600;700&family=Inter:wght@400;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+    <script src="https://code.highcharts.com/highcharts.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <style>
+      :root { --primary-color: #006600; --bg-body: #f4f7f9; --allocated-blue: #0d6efd; --text-dark: #2d3436; --remaining-orange: #e67e22; --q1-color: #004d40; --q2-color: #006600; --q3-color: #2e7d32; --q4-color: #558b2f; }
+      body, .form-select, .form-control, .btn, .table { font-family: 'Prompt', sans-serif; background-color: var(--bg-body); color: var(--text-dark); line-height: 1.5; }
+      .navbar { background-color: var(--primary-color); border-bottom: 4px solid #fbc02d; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+      .nav-link-custom { color: rgba(255,255,255,0.9); font-weight: 500; padding: 0.5rem 1rem; border-radius: 10px; text-decoration: none; cursor: pointer; transition: 0.3s; font-size: 0.9rem; }
+      .nav-active { background: white !important; color: var(--primary-color) !important; font-weight: 600; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
+      .db-main-header { display: flex; align-items: flex-start; gap: 12px; margin-bottom: 5px; }
+      .db-main-title { font-size: 2rem; font-weight: 600; color: #333; }
+      .db-card { border-radius: 12px; padding: 1.2rem; color: white; position: relative; overflow: hidden; height: 100%; border: none; box-shadow: 0 4px 12px rgba(0,0,0,0.08); }
+      .db-card-blue { background-color: #0d6efd; } .db-card-green { background-color: #198754; } .db-card-red { background-color: #dc3545; } .db-card-yellow { background-color: #ffc107; color: #333 !important; }
+      .db-card-val { font-family: 'Inter', sans-serif; font-size: clamp(1.3rem, 3vw, 1.7rem); font-weight: 800; line-height: 1.2; }
+      .db-card-icon { position: absolute; right: 15px; top: 50%; transform: translateY(-50%); font-size: 2.8rem; opacity: 0.25; }
+      .section-title { font-size: 1.6rem; font-weight: 700; color: var(--primary-color); margin-top: 2.5rem; margin-bottom: 1.2rem; padding-bottom: 0.5rem; border-bottom: 3px solid #c8e6c9; }
+      .table-responsive { background: white; border-radius: 20px; overflow: hidden; box-shadow: 0 5px 25px rgba(0,0,0,0.06); }
+      .table thead th { background-color: var(--primary-color) !important; color: white !important; font-weight: 600; text-align: center; padding: 12px 10px; border: none; position: sticky; top: 0; z-index: 10; font-size: 0.88rem; }
+      .table tbody td { padding: 12px 10px; vertical-align: middle; border-bottom: 1px solid #f1f4f6; font-size: 0.88rem; }
+      .summary-row { background-color: #f0fdf4 !important; color: #1a5d1a !important; font-weight: 700; border-top: 1px solid #c8e6c9; border-bottom: 1px solid #c8e6c9; }
+      .grand-total-row td { background-color: #1a3c1a !important; color: #fbc02d !important; font-weight: 800; font-size: 1.1rem; padding: 18px !important; border: none; }
+      .tag-month { display: inline-block; background: #e8f5e9; color: #1b5e20; border: 1px solid #c8e6c9; border-radius: 6px; padding: 2px 6px; font-size: 0.72rem; margin: 1px; font-weight: 600; }
+      .month-cell { width: 45px; text-align: center; border-right: 1px solid #f1f1f1 !important; }
+      .current-month-bg { background-color: #e3f2fd; }
+      .check-mark { color: #00b894; font-size: 1.2rem; }
+      .col-num { font-family: 'Inter', sans-serif; text-align: right; font-weight: 700; white-space: nowrap; }
+      .text-blue { color: var(--allocated-blue) !important; } .text-green { color: #198754 !important; } .text-red { color: #dc3545 !important; }
+      .activity-indent { padding-left: 20px !important; border-left: 3px solid #e8f5e9; margin-top: 4px; color: #555; }
+      .q-check-group { display: flex; flex-wrap: wrap; gap: 15px; background: #f8f9fa; padding: 10px 15px; border-radius: 10px; border: 1px solid #dee2e6; }
+      .modal-content { border-radius: 20px; border: none; overflow: hidden; }
+      .form-label { font-weight: 600; font-size: 0.85rem; color: #444; }
+      #backToTop { position: fixed; bottom: 20px; right: 20px; z-index: 99; display: none; background-color: var(--primary-color); color: white; width: 45px; height: 45px; border-radius: 50%; border: none; cursor: pointer; }
+    </style>
+  </head>
+  <body>
+    <button id="backToTop" onclick="scrollToTop()"><i class="bi bi-arrow-up"></i></button>
+    <nav class="navbar navbar-dark sticky-top">
+      <div class="container-fluid d-flex justify-content-between align-items-center py-2 px-md-4">
+        <span class="navbar-brand fw-bold">AP 2569 MONITORING</span>
+        <div class="d-flex gap-1 gap-md-2">
+          <a id="nav-dash" class="nav-link-custom" onclick="switchView('dashboard')">แผงควบคุม</a>
+          <a id="nav-search" class="nav-link-custom" onclick="switchView('search')">สืบค้นแผน</a>
+          <a id="nav-timeline" class="nav-link-custom" onclick="switchView('timeline')">แผนงานประจำปี</a>
+          <a id="nav-disburse" class="nav-link-custom" onclick="switchView('disburse')">รายการเบิกจ่าย</a>
+        </div>
+      </div>
+    </nav>
+
+    <div class="container-fluid px-2 px-md-5 py-3">
+      <div id="view-dashboard" style="display:none;">
+        <div class="db-main-header"><i class="bi bi-bar-chart-line"></i><h2 class="db-main-title">Dashboard Action Plan 2569 Monitoring</h2></div>
+        <p class="text-muted small mb-4">วิเคราะห์ยอดงบประมาณและสถานะการเบิกจ่ายจริงรายกลุ่มงาน</p>
+        <div id="dashboard-content"></div>
+      </div>
+
+      <div id="view-search" style="display:none;"><div id="search-filter-area"></div></div>
+      
+      <div id="view-timeline" style="display:none;">
+        <div class="stat-card border-top border-5 border-success mb-4 shadow-sm" style="background: white; border-radius: 20px; padding: 1.5rem;">
+          <div class="row align-items-center g-3">
+            <div class="col-md-5"><h4 class="fw-bold mb-3"><i class="bi bi-calendar3 me-2"></i> แผนงานประจำปี 2569</h4>
+              <div class="d-flex align-items-center gap-2"><select id="t-group" class="form-select form-select-sm" style="max-width: 300px;" onchange="loadTimeline()"></select><button class="btn btn-outline-secondary btn-sm" onclick="resetTimeline()">ล้างค่า</button></div>
+            </div>
+            <div class="col-md-7 d-flex justify-content-md-end gap-2">
+              <div class="text-center p-2 bg-light rounded border shadow-sm" style="min-width:110px;"><div class="small text-muted fw-bold">โครงการ</div><div class="h4 mb-0 text-primary fw-bold" id="t-stat-proj">0</div></div>
+              <div class="text-center p-2 bg-light rounded border shadow-sm" style="min-width:150px;"><div class="small text-muted fw-bold">อนุมัติรวม</div><div class="h4 mb-0 text-success fw-bold" id="t-stat-appr">0</div></div>
+              <div class="text-center p-2 bg-light rounded border shadow-sm" style="min-width:150px;"><div class="small text-muted fw-bold">จัดสรรรวม</div><div class="h4 mb-0 text-blue fw-bold" id="t-stat-alloc">0</div></div>
+            </div>
+          </div>
+        </div>
+        <div class="table-responsive bg-white rounded shadow-sm"><table class="table table-timeline mb-0"><thead><tr><th rowspan="3" style="width:40px;">#</th><th rowspan="3" style="width:140px;">กลุ่มงาน</th><th rowspan="3">รายการ / กิจกรรม</th><th rowspan="3" style="width:110px;">ประเภทงบ</th><th colspan="12">ระยะเวลาดำเนินงาน (ปีงบประมาณ 2569)</th><th rowspan="3" style="width:110px;">อนุมัติ (L)</th><th rowspan="3" style="width:110px;">จัดสรร (M)</th></tr><tr class="text-center"><th colspan="3" style="background:#004d40">Q1</th><th colspan="3" style="background:#006600">Q2</th><th colspan="3" style="background:#2e7d32">Q3</th><th colspan="3" style="background:#558b2f">Q4</th></tr><tr class="text-center small"><th>ต.ค.</th><th>พ.ย.</th><th>ธ.ค.</th><th>ม.ค.</th><th>ก.พ.</th><th>มี.ค.</th><th>เม.ย.</th><th>พ.ค.</th><th>มิ.ย.</th><th>ก.ค.</th><th>ส.ค.</th><th>ก.ย.</th></tr></thead><tbody id="timeline-body"><tr><td colspan="18" class="text-center py-5 text-muted">กรุณาเลือกกลุ่มงาน</td></tr></tbody></table></div>
+      </div>
+
+      <div id="view-disburse" style="display:none;">
+        <div class="stat-card border-top border-5 border-primary shadow-sm" style="background: white; border-radius: 20px; padding: 1.5rem;">
+          <div class="d-flex justify-content-between align-items-center mb-3">
+            <h4 class="fw-bold mb-0"><i class="bi bi-wallet2 me-2"></i> รายการเบิกจ่ายเงิน</h4>
+            <button class="btn btn-success fw-bold shadow-sm" onclick="openDisburseModal()">
+              <i class="bi bi-plus-circle me-1"></i> เพิ่มรายการเบิกจ่าย
+            </button>
+          </div>
+          <div class="row align-items-end g-2">
+            <div class="col-md-4">
+              <label class="small fw-bold">เลือกกลุ่มงานเพื่อดูประวัติ:</label>
+              <select id="d-group-filter" class="form-select"></select>
+            </div>
+            <div class="col-md-auto">
+              <button class="btn btn-primary fw-bold" onclick="loadDisburseHistory()">ตกลง</button>
+              <button class="btn btn-outline-secondary fw-bold" onclick="resetDisburseView()">ล้างค่า</button>
+            </div>
+          </div>
+        </div>
+        <div class="table-responsive bg-white rounded shadow-sm mt-3">
+          <table class="table table-hover mb-0">
+            <thead class="bg-light"><tr><th>วันที่บันทึก</th><th>รายการเบิกจ่าย (โครงการ/กิจกรรม)</th><th class="text-end">จัดสรร</th><th class="text-end">เบิกจ่ายครั้งนี้</th><th>วันที่เบิกจ่าย</th><th>เงินยืม/หมายเหตุ</th></tr></thead>
+            <tbody id="disburse-history-body"><tr><td colspan="6" class="text-center py-5 text-muted">กรุณาเลือกกลุ่มงานและกดปุ่มตกลง</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <div class="modal fade" id="modalDisburse" tabindex="-1" aria-hidden="true">
+      <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content shadow-lg">
+          <div class="modal-header bg-success text-white py-3">
+            <h5 class="modal-title fw-bold"><i class="bi bi-file-earmark-plus me-2"></i> บันทึกรายการเบิกจ่ายใหม่</h5>
+            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+          </div>
+          <div class="modal-body p-4">
+            <form id="formDisburse" class="row g-3">
+              <div class="col-md-6"><label class="form-label">1. กลุ่มงาน/งาน</label><select id="f-d-group" class="form-select border-primary" required onchange="onGroupChange()"></select></div>
+              <div class="col-md-6"><label class="form-label">2. ลำดับ (No.)</label><select id="f-d-no" class="form-select" required onchange="onNoChange()"></select></div>
+              <div class="col-md-12"><label class="form-label">3. โครงการ</label><select id="f-d-project" class="form-select" required onchange="onProjectChange()"></select></div>
+              <div class="col-md-6"><label class="form-label">4. กิจกรรมหลัก</label><select id="f-d-main" class="form-select" required onchange="onMainChange()"></select></div>
+              <div class="col-md-6"><label class="form-label">5. กิจกรรมย่อย</label><select id="f-d-sub" class="form-select" required onchange="onSubChange()"></select></div>
+              
+              <div class="col-12"><hr class="my-1"></div>
+              
+              <div class="col-md-4"><label class="form-label">ประเภทงบ</label><input type="text" id="f-d-type" class="form-control bg-light" readonly></div>
+              <div class="col-md-4"><label class="form-label">แหล่งงบประมาณ</label><input type="text" id="f-d-src" class="form-control bg-light" readonly></div>
+              <div class="col-md-4"><label class="form-label">รหัสงบประมาณ</label><input type="text" id="f-d-bcode" class="form-control bg-light" readonly></div>
+              <div class="col-md-6"><label class="form-label">รหัสกิจกรรม/ประเภทรายจ่าย</label><input type="text" id="f-d-acode" class="form-control bg-light" readonly></div>
+              <div class="col-md-6"><label class="form-label">หมวด</label><input type="text" id="f-d-cat" class="form-control bg-light" readonly></div>
+              
+              <div class="col-md-4"><div class="p-2 border rounded bg-light"><label class="small text-muted d-block">จัดสรร (M)</label><span class="fw-bold text-primary h5" id="v-d-alloc">0.00</span></div></div>
+              <div class="col-md-4"><div class="p-2 border rounded bg-light"><label class="small text-muted d-block">เบิกจ่ายสะสม (N)</label><span class="fw-bold text-success h5" id="v-d-disb">0.00</span></div></div>
+              <div class="col-md-4"><div class="p-2 border rounded bg-light"><label class="small text-muted d-block">คงเหลือปัจจุบัน</label><span class="fw-bold text-danger h5" id="v-d-rem">0.00</span></div></div>
+              
+              <div class="col-12"><hr class="my-1"></div>
+              <div class="col-md-12">
+                <label class="form-label">รายละเอียดกิจกรรม (ระบุรายละเอียดการเบิกจ่าย)</label>
+                <textarea id="f-d-detail" class="form-control" rows="2" placeholder="เช่น ค่าอาหารว่างและเครื่องดื่ม จำนวน 50 คน..."></textarea>
+              </div>
+              <div class="col-md-6">
+                <label class="form-label">ประเภทค่าใช้จ่าย</label>
+                <select id="f-d-exptype" class="form-select border-primary" required>
+                  <option value="">-- เลือกประเภทค่าใช้จ่าย --</option>
+                  <option value="ประชุม/อบรม">ประชุม/อบรม</option>
+                  <option value="ติดตาม/ประเมิน">ติดตาม/ประเมิน</option>
+                  <option value="ค่าตอบแทน">ค่าตอบแทน</option>
+                  <option value="จัดสรรให้พื้นที่">จัดสรรให้พื้นที่</option>
+                  <option value="รายจ่ายขั้นต่ำ">รายจ่ายขั้นต่ำ</option>
+                  <option value="อื่นๆ">อื่นๆ</option>
+                </select>
+              </div>
+              <div class="col-md-6">
+                <label class="form-label">เงินยืม (ถ้ามี)</label>
+                <input type="text" id="f-d-loan" class="form-control" placeholder="เลขที่สัญญา/ชื่อ">
+              </div>
+              <div class="col-md-6">
+                <label class="form-label text-success">เบิกจ่ายครั้งนี้ (บาท)</label>
+                <input type="number" step="0.01" id="f-d-amount" class="form-control border-success fw-bold" required>
+              </div>
+              <div class="col-md-6">
+                <label class="form-label">วันที่เบิกจ่าย</label>
+                <input type="date" id="f-d-date" class="form-control" required>
+              </div>
+            </form>
+          </div>
+          <div class="modal-footer bg-light border-0">
+            <button type="button" class="btn btn-secondary px-4" data-bs-dismiss="modal">ยกเลิก</button>
+            <button type="button" class="btn btn-success px-5 fw-bold" onclick="submitDisbursement()">บันทึกรายการ</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      const fmt = new Intl.NumberFormat('th-TH', { minimumFractionDigits: 2 });
+      let allData = [], currentPage = 1, pageSize = 10, rawActionPlan = [];
+      const ms = ["ต.ค.","พ.ย.","ธ.ค.","ม.ค.","ก.พ.","มี.ค.","เม.ย.","พ.ค.","มิ.ย.","ก.ค.","ส.ค.","ก.ย."];
+      const cleanNum = (v) => { if (!v) return 0; let n = parseFloat(v.toString().replace(/,/g, '')); return isNaN(n) ? 0 : n; };
+      const curMIndex = () => { const m = new Date().getMonth(); const map = {9:0, 10:1, 11:2, 0:3, 1:4, 2:5, 3:6, 4:7, 5:8, 6:9, 7:10, 8:11}; return map[m]; };
+
+      window.onload = () => {
+        renderDashboardStructure(); renderSearchStructure(); switchView('dashboard');
+        google.script.run.withSuccessHandler(d => {
+          const gs = document.getElementById('f-group'), ts = document.getElementById('t-group'), bs = document.getElementById('f-budget'), fs = document.getElementById('f-start'), fe = document.getElementById('f-end'), dg = document.getElementById('d-group-filter'), mdg = document.getElementById('f-d-group');
+          if(gs) { gs.add(new Option('-- ทั้งหมด --', '')); d.groups.forEach(g => gs.add(new Option(g, g))); }
+          if(ts) { ts.add(new Option('-- เลือกกลุ่มงาน --', '')); d.groups.forEach(g => ts.add(new Option(g, g))); }
+          if(bs) { bs.add(new Option('-- ทั้งหมด --', '')); d.budgets.forEach(b => bs.add(new Option(b, b))); }
+          if(dg) { dg.add(new Option('-- เลือกกลุ่มงาน --', '')); d.groups.forEach(g => dg.add(new Option(g, g))); }
+          if(mdg) { mdg.add(new Option('-- เลือกกลุ่มงาน --', '')); d.groups.forEach(g => mdg.add(new Option(g, g))); }
+          if(fs && fe) { fs.add(new Option('--กรุณาเลือก--', '')); fe.add(new Option('--กรุณาเลือก--', '')); ms.forEach(m => { fs.add(new Option(m,m)); fe.add(new Option(m,m)); }); }
+        }).getFilterData();
+        google.script.run.withSuccessHandler(res => rawActionPlan = res).getActionPlanRawData();
+      };
+
+      function switchView(v) {
+        ['view-dashboard', 'view-search', 'view-timeline', 'view-disburse'].forEach(id => document.getElementById(id).style.display = 'none');
+        ['nav-dash', 'nav-search', 'nav-timeline', 'nav-disburse'].forEach(id => document.getElementById(id).classList.remove('nav-active'));
+        document.getElementById('view-' + v).style.display = 'block';
+        document.getElementById('nav-' + (v==='dashboard'?'dash':v)).classList.add('nav-active');
+        if(v === 'dashboard') loadDashboard();
+        setTimeout(() => { Highcharts.charts.forEach(c => c && c.reflow()); }, 200);
+      }
+
+      function loadDashboard() {
+        google.script.run.withSuccessHandler(s => {
+          ['st-sp-appr','st-out-appr'].forEach(id => document.getElementById(id).innerText = fmt.format(id.includes('sp')?s.spAppr:s.outAppr));
+          ['st-sp-alloc','st-out-alloc'].forEach(id => document.getElementById(id).innerText = fmt.format(id.includes('sp')?s.spAlloc:s.outAlloc));
+          ['st-sp-disb','st-out-disb'].forEach(id => document.getElementById(id).innerText = fmt.format(id.includes('sp')?s.spDisb:s.outDisb));
+          ['st-sp-rem','st-out-rem'].forEach(id => document.getElementById(id).innerText = fmt.format(id.includes('sp')?s.spRem:s.outRem));
+          renderDoughnut('doughnutSp', s.spPerc); renderDoughnut('doughnutOutside', s.outPerc);
+          renderBarChart('chartSp', s.topSpGroups, '#198754', 'ร้อยละการเบิกจ่าย งบประมาณใน สป.สธ.');
+          renderBarChart('chartOutside', s.topOutsideGroups, '#1565c0', 'ร้อยละการเบิกจ่าย งบประมาณเงินนอก สป.');
+        }).getDashboardData();
+      }
+      function renderDoughnut(id, val) { Highcharts.chart(id, { chart: { type: 'pie', height: 280, backgroundColor: 'transparent' }, title: { text: val.toFixed(2) + '%', align: 'center', verticalAlign: 'middle', style: { fontSize: '28px', fontWeight: '800', color: (val<=25?'#ef5350':val<=50?'#ff9800':val<=75?'#fbc02d':'#43a047'), fontFamily: 'Inter' } }, tooltip: { pointFormat: 'เบิกจ่าย: <b>{point.y:.2f}%</b>' }, plotOptions: { pie: { innerSize: '70%', dataLabels: { enabled: false }, borderWidth: 0 } }, series: [{ data: [{ y: val, color: (val<=25?'#ef5350':val<=50?'#ff9800':val<=75?'#fbc02d':'#43a047') }, { y: Math.max(0, 100-val), color: '#eceff1' }] }], credits: { enabled: false } }); }
+      function renderBarChart(id, data, color, titleText) { Highcharts.chart(id, { chart: { type: 'column', backgroundColor: 'transparent', style: { fontFamily: 'Prompt' } }, title: { text: titleText, style: { fontSize: '18px', fontWeight: '700', color: '#1a5d1a' } }, xAxis: { categories: data.map(d => d.name), labels: { style: { fontSize: '14px' }, autoRotation: [-45] } }, yAxis: { max: 100, title: { text: null } }, legend: { enabled: false }, tooltip: { headerFormat: '<span style="font-size: 16px; font-weight:700;">{point.key}</span><br/>', pointFormat: '<span style="color:{point.color}">●</span> ร้อยละการเบิกจ่าย: <b>{point.y:.2f}%</b><br/>', style: { fontSize: '15px' } }, plotOptions: { column: { colorByPoint: true, colors: [color], dataLabels: { enabled: true, format: '{point.y:.1f}%', style: { fontSize: '14px' } }, borderRadius: 6 } }, series: [{ data: data.map(d => d.y) }], credits: { enabled: false } }); }
+
+      function openDisburseModal() { document.getElementById('formDisburse').reset(); ['v-d-alloc','v-d-disb','v-d-rem'].forEach(id => document.getElementById(id).innerText = '0.00'); new bootstrap.Modal(document.getElementById('modalDisburse')).show(); }
+      function onGroupChange() { const g = document.getElementById('f-d-group').value; const s = document.getElementById('f-d-no'); s.innerHTML = '<option value="">-- เลือก No. --</option>'; [...new Set(rawActionPlan.filter(r => r[3] === g).map(r => r[2]))].forEach(n => s.add(new Option(n, n))); }
+      function onNoChange() { const g = document.getElementById('f-d-group').value, n = document.getElementById('f-d-no').value; const s = document.getElementById('f-d-project'); s.innerHTML = '<option value="">-- เลือกโครงการ --</option>'; [...new Set(rawActionPlan.filter(r => r[3] === g && r[2].toString() === n.toString()).map(r => r[5]))].forEach(p => s.add(new Option(p, p))); }
+      function onProjectChange() { const g = document.getElementById('f-d-group').value, n = document.getElementById('f-d-no').value, p = document.getElementById('f-d-project').value; const s = document.getElementById('f-d-main'); s.innerHTML = '<option value="">-- เลือกกิจกรรมหลัก --</option>'; [...new Set(rawActionPlan.filter(r => r[3] === g && r[2].toString() === n.toString() && r[5] === p).map(r => r[6]))].forEach(m => s.add(new Option(m, m))); }
+      function onMainChange() { const g = document.getElementById('f-d-group').value, n = document.getElementById('f-d-no').value, p = document.getElementById('f-d-project').value, m = document.getElementById('f-d-main').value; const s = document.getElementById('f-d-sub'); s.innerHTML = '<option value="">-- เลือกกิจกรรมย่อย --</option>'; rawActionPlan.filter(r => r[3] === g && r[2].toString() === n.toString() && r[5] === p && r[6] === m).forEach(r => s.add(new Option(r[7], r[7]))); }
+      function onSubChange() { 
+        const g = document.getElementById('f-d-group').value, n = document.getElementById('f-d-no').value, p = document.getElementById('f-d-project').value, m = document.getElementById('f-d-main').value, s = document.getElementById('f-d-sub').value; 
+        const r = rawActionPlan.find(r => r[3] === g && r[2].toString() === n.toString() && r[5] === p && r[6] === m && r[7] === s); 
+        if(r) { 
+          document.getElementById('f-d-cat').value = r[1]; 
+          document.getElementById('f-d-type').value = r[9]; 
+          document.getElementById('f-d-src').value = r[10]; 
+          document.getElementById('f-d-bcode').value = r[27] || "-"; 
+          document.getElementById('f-d-acode').value = r[28] || "-"; 
+          document.getElementById('v-d-alloc').innerText = fmt.format(r[12]); 
+          document.getElementById('v-d-disb').innerText = fmt.format(r[13]); 
+          document.getElementById('v-d-rem').innerText = fmt.format(r[12] - r[13]); 
+        } 
+      }
+
+      function submitDisbursement() {
+        const amt = document.getElementById('f-d-amount').value; 
+        const expType = document.getElementById('f-d-exptype').value;
+        if(!amt || amt <= 0) { Swal.fire('คำเตือน', 'ระบุยอดเบิกจ่ายที่ถูกต้อง', 'warning'); return; }
+        if(!expType) { Swal.fire('คำเตือน', 'เลือกประเภทค่าใช้จ่าย', 'warning'); return; }
+
+        const payload = { 
+          group: document.getElementById('f-d-group').value, 
+          no: document.getElementById('f-d-no').value, 
+          cat: document.getElementById('f-d-cat').value, 
+          project: document.getElementById('f-d-project').value, 
+          mainAct: document.getElementById('f-d-main').value, 
+          subAct: document.getElementById('f-d-sub').value, 
+          budgetType: document.getElementById('f-d-type').value, 
+          budgetSrc: document.getElementById('f-d-src').value, 
+          budgetCode: document.getElementById('f-d-bcode').value, 
+          actCode: document.getElementById('f-d-acode').value, 
+          allocated: document.getElementById('v-d-alloc').innerText.replace(/,/g,''), 
+          remaining: document.getElementById('v-d-rem').innerText.replace(/,/g,''), 
+          amount: amt, 
+          date: document.getElementById('f-d-date').value, 
+          loan: document.getElementById('f-d-loan').value,
+          actDetail: document.getElementById('f-d-detail').value, // [New]
+          expType: expType // [New]
+        };
+
+        Swal.fire({ title: 'ยืนยันการบันทึก?', text: "บันทึกยอดเงินเบิกจ่ายลงฐานข้อมูล", icon: 'question', showCancelButton: true, confirmButtonText: 'บันทึก', cancelButtonText: 'ยกเลิก' }).then((res) => { 
+          if (res.isConfirmed) { 
+            Swal.showLoading(); 
+            google.script.run.withSuccessHandler(r => { 
+              if(r.success) { 
+                Swal.fire('สำเร็จ!', 'บันทึกข้อมูลเรียบร้อย', 'success'); 
+                bootstrap.Modal.getInstance(document.getElementById('modalDisburse')).hide(); 
+                loadDisburseHistory(); 
+              } 
+            }).saveDisbursement(payload); 
+          } 
+        });
+      }
+
+      function loadDisburseHistory() {
+        const group = document.getElementById('d-group-filter').value;
+        if(!group) { Swal.fire('แจ้งเตือน', 'กรุณาเลือกกลุ่มงานก่อนกดปุ่มตกลง', 'info'); return; }
+        const tbody = document.getElementById('disburse-history-body');
+        tbody.innerHTML = '<tr><td colspan="6" class="text-center py-5">กำลังค้นหาประวัติ...</td></tr>';
+        google.script.run.withSuccessHandler(rows => {
+          if(!rows.length) { tbody.innerHTML = '<tr><td colspan="6" class="text-center py-5 text-muted">ไม่พบประวัติการเบิกจ่ายของกลุ่มงานนี้</td></tr>'; return; }
+          let h = ""; rows.reverse().forEach(r => { h += `<tr><td><small>${new Date(r[0]).toLocaleString('th-TH')}</small></td><td><b>${r[4]}</b><br><small class="text-muted">${r[6]}</small><br><small class="text-primary">${r[16] || ''}</small></td><td class="col-num">${fmt.format(r[11])}</td><td class="col-num text-success fw-bold">${fmt.format(r[13])}</td><td class="text-center">${r[14]}</td><td>${r[17]} / ${r[15] || "-"}</td></tr>`; });
+          tbody.innerHTML = h;
+        }).getDisburseHistory(group);
+      }
+
+      function resetDisburseView() {
+        document.getElementById('d-group-filter').selectedIndex = 0;
+        document.getElementById('disburse-history-body').innerHTML = '<tr><td colspan="6" class="text-center py-5 text-muted">กรุณาเลือกกลุ่มงานและกดปุ่มตกลง</td></tr>';
+      }
+
+      /* --- Logic Search & Timeline --- */
+      function performSearch() {
+        const qArr = []; ['q1','q2','q3','q4'].forEach(id => { if(document.getElementById(id).checked) qArr.push(id.toUpperCase()); });
+        const f = { workGroup: document.getElementById('f-group').value, budgetSrc: document.getElementById('f-budget').value, projectName: document.getElementById('f-name').value, quarters: qArr, startMonth: document.getElementById('f-start').value === '--กรุณาเลือก--' ? '' : document.getElementById('f-start').value, endMonth: document.getElementById('f-end').value === '--กรุณาเลือก--' ? '' : document.getElementById('f-end').value };
+        google.script.run.withSuccessHandler(res => { allData = res; currentPage = 1; renderTable(); }).searchActionPlan(f);
+      }
+      function renderTable() {
+        const tbody = document.getElementById('result-body'); const start = (currentPage - 1) * pageSize; const pageData = allData.slice(start, start + pageSize);
+        if(!pageData.length) { tbody.innerHTML = '<tr><td colspan="11" class="text-center py-5 text-muted">-- ไม่พบข้อมูล --</td></tr>'; updatePager(); return; }
+        let html = "", lastGroup = "", lastProj = "", sL=0, sM=0, sN=0;
+        pageData.forEach((row, i) => {
+          if (row[5] !== lastProj && i !== 0) { const sP = sM > 0 ? (sN / sM) * 100 : 0; const sC = getPercColor(sP); html += `<tr class="summary-row"><td colspan="6" class="text-end">รวมโครงการ: ${lastProj}</td><td class="col-num">${fmt.format(sL)}</td><td class="col-num text-blue">${fmt.format(sM)}</td><td class="col-num text-green">${fmt.format(sN)}</td><td class="col-num text-blue">${fmt.format(sM-sN)}</td><td class="col-num ${sC}">${sP.toFixed(2)}%</td></tr>`; sL=0; sM=0; sN=0; }
+          const dG = (row[3] === lastGroup) ? "" : row[3]; let pD = (row[5] === lastProj) ? "" : `<div class="fw-bold text-success mb-1" style="font-size:0.95rem;">${row[5]}</div>`; const combinedCell = pD + `<div class="activity-indent">${row[6]}<br><small class="text-muted">${row[7]}</small></div>`;
+          const l=cleanNum(row[11]), m=cleanNum(row[12]), n=cleanNum(row[13]), p=cleanNum(row[14]), pc=getPercColor(p); let ts = ""; ms.forEach((name, k) => { if(row[15+k] && row[15+k].toString().trim() !== "") ts += `<span class="tag-month">${name}</span>`; });
+          html += `<tr><td class="text-center">${row[2]}</td><td class="fw-bold">${dG}</td><td>${combinedCell}</td><td class="text-center">${ts}</td><td>${row[9]}</td><td>${row[10]}</td><td class="col-num">${fmt.format(l)}</td><td class="col-num text-blue">${fmt.format(m)}</td><td class="col-num text-green">${fmt.format(n)}</td><td class="col-num text-blue">${fmt.format(m-n)}</td><td class="col-num ${pc}">${p.toFixed(2)}%</td></tr>`;
+          sL+=l; sM+=m; sN+=n; lastGroup = row[3]; lastProj = row[5]; if(i === pageData.length - 1) { const sfP = sM > 0 ? (sN / sM) * 100 : 0; const sfC = getPercColor(sfP); html += `<tr class="summary-row"><td colspan="6" class="text-end">รวมโครงการ: ${lastProj}</td><td class="col-num">${fmt.format(sL)}</td><td class="col-num text-blue">${fmt.format(sM)}</td><td class="col-num text-green">${fmt.format(sN)}</td><td class="col-num text-blue">${fmt.format(sM-sN)}</td><td class="col-num ${sfC}">${sfP.toFixed(2)}%</td></tr>`; }
+        });
+        let gL=0, gM=0, gN=0; allData.forEach(r => { gL+=cleanNum(r[11]); gM+=cleanNum(r[12]); gN+=cleanNum(r[13]); }); html += `<tr class="grand-total-row"><td colspan="6" class="text-end fw-bold">Grand Total ทั้งสิ้น</td><td class="col-num">${fmt.format(gL)}</td><td class="col-num">${fmt.format(gM)}</td><td class="col-num">${fmt.format(gN)}</td><td class="col-num text-light">${fmt.format(gM - gN)}</td><td class="col-num">${(gM>0?gN/gM*100:0).toFixed(2)}%</td></tr>`;
+        tbody.innerHTML = html; updatePager();
+      }
+      function loadTimeline() {
+        const group = document.getElementById('t-group').value; if(!group || group === '-- เลือกกลุ่มงาน --') return;
+        google.script.run.withSuccessHandler(res => {
+          const tbody = document.getElementById('timeline-body'); tbody.innerHTML = "";
+          let totL=0, totM=0, curM=curMIndex(), lastShownGroup = ""; 
+          const grouped = res.reduce((acc, row) => { const p = row[5]; if(!acc[p]) acc[p] = { rows: [], sumL:0, sumM:0 }; acc[p].rows.push(row); acc[p].sumL += cleanNum(row[11]); acc[p].sumM += cleanNum(row[12]); return acc; }, {});
+          let pIdx=0; for(const pN in grouped) { pIdx++; const pD=grouped[pN]; totL+=pD.sumL; totM+=pD.sumM; tbody.innerHTML += `<tr class="row-project-header"><td class="text-center">${pIdx}</td><td colspan="17">โครงการ: ${pN}</td></tr>`; pD.rows.forEach((row, i) => { let mHtml=""; for(let k=0; k<12; k++) { const hA = row[15+k] && row[15+k].toString().trim() !== ""; mHtml += `<td class="month-cell ${k===curM?'current-month-bg':''}">${hA?'<i class="bi bi-check-circle-fill check-mark"></i>':''}</td>`; } const currentGroup = row[3]; const displayGroup = (currentGroup === lastShownGroup) ? "" : currentGroup; lastShownGroup = currentGroup; tbody.innerHTML += `<tr><td class="text-center text-muted small">${pIdx}.${i+1}</td><td class="fw-bold">${displayGroup}</td><td class="ps-3">${row[6]}<br><small class="text-muted">${row[7]}</small></td><td class="text-center small">${row[9]}</td>${mHtml}<td class="col-num text-dark">${fmt.format(cleanNum(row[11]))}</td><td class="col-num text-blue">${fmt.format(cleanNum(row[12]))}</td></tr>`; }); tbody.innerHTML += `<tr class="summary-row"><td colspan="16" class="text-end">รวมโครงการ: ${pN}</td><td class="col-num">${fmt.format(pD.sumL)}</td><td class="col-num text-blue">${fmt.format(pD.sumM)}</td></tr>`; }
+          tbody.innerHTML += `<tr class="grand-total-row"><td colspan="16" class="text-end fw-bold">ยอดรวมกลุ่มงานทั้งสิ้น</td><td class="col-num text-light">${fmt.format(totL)}</td><td class="col-num text-light">${fmt.format(totM)}</td></tr>`;
+          document.getElementById('t-stat-proj').innerText = Object.keys(grouped).length; document.getElementById('t-stat-appr').innerText = fmt.format(totL); document.getElementById('t-stat-alloc').innerText = fmt.format(totM);
+        }).searchActionPlan({ workGroup: group });
+      }
+
+      /* --- Common Utils --- */
+      function resetSearch() { document.querySelectorAll('#view-search select').forEach(e=>e.selectedIndex=0); document.getElementById('f-name').value=""; ['q1','q2','q3','q4'].forEach(id => { const cb = document.getElementById(id); if(cb) cb.checked = false; }); allData=[]; renderTable(); }
+      function resetTimeline() { document.getElementById('t-group').selectedIndex = 0; document.getElementById('timeline-body').innerHTML = '<tr><td colspan="18" class="text-center py-5 text-muted">กรุณาเลือกกลุ่มงาน</td></tr>'; ['t-stat-proj','t-stat-appr','t-stat-alloc'].forEach(id => document.getElementById(id).innerText = '0'); }
+      function updatePager() { const totalP = Math.ceil(allData.length / pageSize) || 1; const st = document.getElementById('p-select-top'), sb = document.getElementById('p-select-bottom'); st.innerHTML = ''; sb.innerHTML = ''; for(let i=1; i<=totalP; i++) { st.add(new Option(i,i)); sb.add(new Option(i,i)); } st.value = currentPage; sb.value = currentPage; document.getElementById('txt-count-top').innerText = `พบ ${allData.length} รายการ`; document.getElementById('txt-count-bottom').innerText = `หน้า ${currentPage}/${totalP}`; }
+      function jumpSync(s) { currentPage = parseInt(document.getElementById(s === 'top' ? 'p-select-top' : 'p-select-bottom').value); if(s === 'bottom') window.scrollTo({top: document.getElementById('view-search').offsetTop, behavior: 'smooth'}); renderTable(); }
+      function scrollToTop() { window.scrollTo({top: 0, behavior: 'smooth'}); }
+      window.onscroll = () => { document.getElementById("backToTop").style.display = (window.scrollY > 300) ? "block" : "none"; };
+      function renderDashboardStructure() { document.getElementById('dashboard-content').innerHTML = `<div class="section-title">งบประมาณใน สป.สธ.</div><div class="row g-3 mb-4"><div class="col-6 col-md-3"><div class="db-card db-card-blue"><div class="db-card-title">งบอนุมัติ (L)</div><div class="db-card-val" id="st-sp-appr">0</div><i class="bi bi-file-earmark-plus db-card-icon"></i></div></div><div class="col-6 col-md-3"><div class="db-card db-card-green"><div class="db-card-title">งบจัดสรร (M)</div><div class="db-card-val" id="st-sp-alloc">0</div><i class="bi bi-check-circle db-card-icon"></i></div></div><div class="col-6 col-md-3"><div class="db-card db-card-red"><div class="db-card-title">เบิกจ่ายจริง (N)</div><div class="db-card-val" id="st-sp-disb">0</div><i class="bi bi-x-circle db-card-icon"></i></div></div><div class="col-6 col-md-3"><div class="db-card db-card-yellow"><div class="db-card-title">คงเหลือ</div><div class="db-card-val" id="st-sp-rem">0</div><i class="bi bi-dash-circle db-card-icon"></i></div></div></div><div class="row mb-4"><div class="col-md-12"><div class="stat-card" style="background: white; border-radius: 20px; padding: 1.5rem; border: none; box-shadow: 0 5px 15px rgba(0,0,0,0.03);"><div id="doughnutSp"></div></div></div></div><div class="stat-card shadow-sm mb-5" style="background: white; border-radius: 20px; padding: 1.5rem; border: none; box-shadow: 0 5px 15px rgba(0,0,0,0.03);"><div id="chartSp" style="height:420px;"></div></div><div class="section-title">งบประมาณเงินนอก สป.</div><div class="row g-3 mb-4"><div class="col-6 col-md-3"><div class="db-card db-card-blue"><div class="db-card-title">งบอนุมัติ (L)</div><div class="db-card-val" id="st-out-appr">0</div><i class="bi bi-file-earmark-plus db-card-icon"></i></div></div><div class="col-6 col-md-3"><div class="db-card db-card-green"><div class="db-card-title">งบจัดสรร (M)</div><div class="db-card-val" id="st-out-alloc">0</div><i class="bi bi-check-circle db-card-icon"></i></div></div><div class="col-6 col-md-3"><div class="db-card db-card-red"><div class="db-card-title">เบิกจ่ายจริง (N)</div><div class="db-card-val" id="st-out-disb">0</div><i class="bi bi-x-circle db-card-icon"></i></div></div><div class="col-6 col-md-3"><div class="db-card db-card-yellow"><div class="db-card-title">คงเหลือ</div><div class="db-card-val" id="st-out-rem">0</div><i class="bi bi-dash-circle db-card-icon"></i></div></div></div><div class="row mb-4"><div class="col-md-12"><div class="stat-card" style="background: white; border-radius: 20px; padding: 1.5rem; border: none; box-shadow: 0 5px 15px rgba(0,0,0,0.03);"><div id="doughnutOutside"></div></div></div></div><div class="stat-card shadow-sm mb-5" style="background: white; border-radius: 20px; padding: 1.5rem; border: none; box-shadow: 0 5px 15px rgba(0,0,0,0.03);"><div id="chartOutside" style="height:420px;"></div></div>`; }
+      function renderSearchStructure() { document.getElementById('search-filter-area').innerHTML = `<div class="stat-card border-top border-5 border-success p-4 shadow-sm" style="background: white; border-radius: 20px; padding: 1.5rem;"><div class="row g-2 g-md-3"><div class="col-12 col-md-3"><label class="fw-bold small mb-1">กลุ่มงาน</label><select id="f-group" class="form-select form-select-sm"></select></div><div class="col-12 col-md-3"><label class="fw-bold small mb-1">แหล่งงบ</label><select id="f-budget" class="form-select form-select-sm"></select></div><div class="col-6 col-md-3"><label class="fw-bold small mb-1">เริ่มต้น</label><select id="f-start" class="form-select form-select-sm"></select></div><div class="col-6 col-md-3"><label class="fw-bold small mb-1">สิ้นสุด</label><select id="f-end" class="form-select form-select-sm"></select></div><div class="col-12"><label class="fw-bold small mb-2">ไตรมาส (เลือกได้มากกว่า 1)</label><div class="q-check-group"><div class="form-check form-check-inline"><input class="form-check-input" type="checkbox" id="q1"><label class="form-check-label" for="q1">Q1</label></div><div class="form-check form-check-inline"><input class="form-check-input" type="checkbox" id="q2"><label class="form-check-label" for="q2">Q2</label></div><div class="form-check form-check-inline"><input class="form-check-input" type="checkbox" id="q3"><label class="form-check-label" for="q3">Q3</label></div><div class="form-check form-check-inline"><input class="form-check-input" type="checkbox" id="q4"><label class="form-check-label" for="q4">Q4</label></div></div></div><div class="col-12 col-md-9"><label class="fw-bold small mb-1">ชื่อโครงการ</label><input type="text" id="f-name" class="form-control form-select-sm" placeholder="พิมพ์ชื่อโครงการที่ต้องการสืบค้น..."></div><div class="col-12 col-md-3 d-flex align-items-end gap-2"><button onclick="performSearch()" class="btn btn-success btn-sm fw-bold flex-grow-1">สืบค้นแผน</button><button onclick="resetSearch()" class="btn btn-outline-secondary btn-sm">ล้าง</button><button onclick="window.print()" class="btn btn-dark btn-sm"><i class="bi bi-printer"></i></button></div></div></div><div class="bg-white p-2 border rounded-top d-flex justify-content-between align-items-center shadow-sm mt-3"><div class="fw-bold text-success small" id="txt-count-top">พบ 0 รายการ</div><div class="d-flex align-items-center gap-1 small">หน้า <select id="p-select-top" onchange="jumpSync('top')" class="form-select form-select-sm w-auto shadow-sm"></select></div></div><div class="table-responsive border-start border-end"><table class="table table-hover mb-0"><thead><tr><th>ลำดับ</th><th>กลุ่มงาน/งาน</th><th>โครงการ/กิจกรรม</th><th>ระยะเวลา</th><th>ประเภทงบ</th><th>แหล่งงบ</th><th>อนุมัติ</th><th>จัดสรร</th><th>เบิกจ่าย</th><th>คงเหลือ</th><th>ร้อยละเบิกจ่าย</th></tr></thead><tbody id="result-body"></tbody></table></div><div class="bg-white p-2 border rounded-bottom d-flex justify-content-between align-items-center mb-5 shadow-sm"><div class="text-muted extra-small" id="txt-count-bottom"></div><div class="d-flex align-items-center gap-1 small">หน้า <select id="p-select-bottom" onchange="jumpSync('bottom')" class="form-select form-select-sm w-auto shadow-sm"></select></div></div>`; }
+    </script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+  </body>
+</html>
