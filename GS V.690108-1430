@@ -1,0 +1,111 @@
+const SS_ID = '1RV4UkzfZoTVlZeuIBt_aUDFEQhsoLvSn_ZpbTFvHjKU'; 
+const SHEET_NAME = 'Action Plan 2569'; 
+const DB_SHEET = 't_actionplan'; 
+
+function doGet() {
+  return HtmlService.createTemplateFromFile('Index')
+      .evaluate()
+      .setTitle('AP 2569 Monitoring V.69.01.08.14.30') 
+      .addMetaTag('viewport', 'width=device-width, initial-scale=1')
+      .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
+}
+
+// ฟังก์ชันดึงข้อมูล Dashboard
+function getDashboardData() {
+  try {
+    const ss = SpreadsheetApp.openById(SS_ID);
+    const sheet = ss.getSheetByName(SHEET_NAME);
+    const data = sheet.getDataRange().getValues();
+    const rows = data.slice(1);
+    let stats = { spAppr: 0, spAlloc: 0, spDisb: 0, spRem: 0, spPerc: 0, outAppr: 0, outAlloc: 0, outDisb: 0, outRem: 0, outPerc: 0, topSpGroups: [], topOutsideGroups: [] };
+    const spGroupData = {}, outGroupData = {};
+    const cleanNum = (v) => { if (!v) return 0; let n = parseFloat(v.toString().replace(/,/g, '')); return isNaN(n) ? 0 : n; };
+    rows.forEach(row => {
+      const type = row[9] ? row[9].toString() : "";
+      const group = row[3] ? row[3].toString().trim() : "ไม่ระบุกลุ่มงาน";
+      const l = cleanNum(row[11]), m = cleanNum(row[12]), n = cleanNum(row[13]);
+      if (type.includes("สป.สธ.")) {
+        stats.spAppr += l; stats.spAlloc += m; stats.spDisb += n;
+        if (!spGroupData[group]) spGroupData[group] = { alloc: 0, disb: 0 };
+        spGroupData[group].alloc += m; spGroupData[group].disb += n;
+      } else if (type.includes("เงินนอก")) {
+        stats.outAppr += l; stats.outAlloc += m; stats.outDisb += n;
+        if (!outGroupData[group]) outGroupData[group] = { alloc: 0, disb: 0 };
+        outGroupData[group].alloc += m; outGroupData[group].disb += n;
+      }
+    });
+    stats.spRem = stats.spAlloc - stats.spDisb; stats.outRem = stats.outAlloc - stats.outDisb;
+    stats.spPerc = stats.spAlloc > 0 ? (stats.spDisb / stats.spAlloc) * 100 : 0;
+    stats.outPerc = stats.outAlloc > 0 ? (stats.outDisb / stats.outAlloc) * 100 : 0;
+    const getTop10 = (src) => Object.keys(src).map(n => ({ name: n, y: src[n].alloc > 0 ? (src[n].disb / src[n].alloc) * 100 : 0 })).filter(i => i.y > 0).sort((a, b) => b.y - a.y).slice(0, 10);
+    stats.topSpGroups = getTop10(spGroupData); stats.topOutsideGroups = getTop10(outGroupData);
+    return stats;
+  } catch (e) { return { error: e.toString() }; }
+}
+
+function getFilterData() {
+  const ss = SpreadsheetApp.openById(SS_ID);
+  const sheet = ss.getSheetByName(SHEET_NAME);
+  const rows = sheet.getDataRange().getValues().slice(1);
+  return { groups: [...new Set(rows.map(row => row[3]))].filter(String).sort(), budgets: [...new Set(rows.map(row => row[10]))].filter(String).sort() };
+}
+
+function searchActionPlan(filters) {
+  const ss = SpreadsheetApp.openById(SS_ID);
+  const sheet = ss.getSheetByName(SHEET_NAME);
+  const rows = sheet.getDataRange().getValues().slice(1);
+  const monthOrder = ["ต.ค.", "พ.ย.", "ธ.ค.", "ม.ค.", "ก.พ.", "มี.ค.", "เม.ย.", "พ.ค.", "มิ.ย.", "ก.ค.", "ส.ค.", "ก.ย."];
+  const monthMap = { "ต.ค.": 15, "พ.ย.": 16, "ธ.ค.": 17, "ม.ค.": 18, "ก.พ.": 19, "มี.ค.": 20, "เม.ย.": 21, "พ.ค.": 22, "มิ.ย.": 23, "ก.ค.": 24, "ส.ค.": 25, "ก.ย.": 26 };
+  return rows.filter(row => {
+    const mG = !filters.workGroup || row[3] === filters.workGroup;
+    const mB = !filters.budgetSrc || row[10] === filters.budgetSrc;
+    const mN = !filters.projectName || row[5].toString().toLowerCase().includes(filters.projectName.toLowerCase());
+    let mQ = true;
+    if (filters.quarters && filters.quarters.length > 0) {
+      const qRangeMap = { "Q1": [15, 16, 17], "Q2": [18, 19, 20], "Q3": [21, 22, 23], "Q4": [24, 25, 26] };
+      mQ = filters.quarters.some(q => qRangeMap[q].some(idx => row[idx] && row[idx].toString().trim() !== ""));
+    }
+    let mM = true;
+    const sIdx = filters.startMonth ? monthOrder.indexOf(filters.startMonth) : -1;
+    const eIdx = filters.endMonth ? monthOrder.indexOf(filters.endMonth) : -1;
+    if (sIdx !== -1 || eIdx !== -1) {
+      let s = (sIdx !== -1) ? sIdx : 0; let e = (eIdx !== -1) ? eIdx : 11;
+      if (s > e) [s, e] = [e, s];
+      mM = monthOrder.slice(s, e + 1).some(m => row[monthMap[m]] && row[monthMap[m]].toString().trim() !== "");
+    }
+    return mG && mB && mN && mQ && mM;
+  });
+}
+
+function getActionPlanRawData() {
+  const ss = SpreadsheetApp.openById(SS_ID);
+  const sheet = ss.getSheetByName(SHEET_NAME);
+  return sheet.getDataRange().getValues();
+}
+
+function saveDisbursement(data) {
+  try {
+    const ss = SpreadsheetApp.openById(SS_ID);
+    let sheet = ss.getSheetByName(DB_SHEET);
+    if (!sheet) {
+      sheet = ss.insertSheet(DB_SHEET);
+      sheet.appendRow(["timestamp", "กลุ่มงาน", "ลำดับ", "หมวด", "โครงการ", "กิจกรรมหลัก", "กิจกรรมย่อย", "ประเภทงบ", "แหล่งงบประมาณ", "รหัสงบประมาณ", "รหัสกิจกรรม", "จัดสรร", "คงเหลือ", "เบิกจ่ายครั้งนี้", "วันที่เบิกจ่าย", "เงินยืม", "รายละเอียดกิจกรรม", "ประเภทค่าใช้จ่าย"]);
+    }
+    sheet.appendRow([
+      new Date(), data.group, data.no, data.cat, data.project, data.mainAct, data.subAct, 
+      data.budgetType, data.budgetSrc, data.budgetCode, data.actCode, 
+      data.allocated, data.remaining, data.amount, data.date, data.loan,
+      data.actDetail, data.expType
+    ]);
+    return { success: true };
+  } catch (e) { return { success: false, error: e.toString() }; }
+}
+
+function getDisburseHistory(group) {
+  const ss = SpreadsheetApp.openById(SS_ID);
+  const sheet = ss.getSheetByName(DB_SHEET);
+  if (!sheet) return [];
+  const data = sheet.getDataRange().getValues().slice(1);
+  if (!group) return data;
+  return data.filter(r => r[1] === group);
+}
